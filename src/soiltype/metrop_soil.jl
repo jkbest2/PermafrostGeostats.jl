@@ -184,29 +184,3 @@ function metrop_soil(knot_locs::Array{Float64, 2},
     end
     nothing
 end
-
-function accept_rate(samples::AbstractArray)
-    I, J = size(samples)
-    accept = Array{Float64}(zeros(I))
-    for i in 1:I
-        for j in 2:J
-            if samples[i, j] != samples[i, j - 1]
-                accept[i] += 1
-            end
-        end
-    end
-    accept ./ (J - 1)
-end
-
-# "Borrowed" from Lora.jl's proposal width tuner
-function erf_rate_score(x::AbstractArray, k::Real = 3.)
-    erf(k .* x) .+ 1
-end
-
-function adapt_prop_width!(pw::Array{Float64, 1},
-                           samples::Array{Float64, 2},
-                           target_rate::Float64 = 0.44)
-    acc = accept_rate(samples)
-    pw[:] = pw .* erf_rate_score(acc .- target_rate)
-    nothing
-end

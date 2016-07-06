@@ -34,8 +34,8 @@ end
                       samples::Array{Float64, 2},
                       target_rate::Float64 = 0.44)
 
-Adapts the MCMC proposal width based on a set of samples in an
-effort to get the acceptance rate to the `target_rate`.
+Adapts the MCMC proposal width *in place* based on a set of samples
+in an effort to get the acceptance rate to the `target_rate`.
 """
 function adapt_prop_width!(pw::Array{Float64, 1},
                            samples::Array{Float64, 2},

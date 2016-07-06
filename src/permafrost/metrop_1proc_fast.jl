@@ -104,44 +104,21 @@ function metrop_oneproc(knot_locs::Array{Float64, 2},
         end
         println("Iteration ", i, "/", iters, ": lp = ", lp[i])
 
-        # Adapt proposal distribution during warmup
-        if mod(i, adapt_every) == 0 && i ≤ finish_adapt
-            prop_width = adapt_prop_width(
-                    knot_samp[:, (i - adapt_every + 1):i],
-                    prop_width)
-            prop_dist = MvNormal(zeros(nknots),
-                                 PDiagMat(prop_width))
-        end
+            # Adapt proposal distribution during warmup
+            if i ≤ finish_adapt
+                if i % adapt_every != 0
+                    for k in keys(θ_curr)
+                        adapt_log[k][:, i % adapt_every] = vec(θ_curr[k])
+                    end
+                else
+                    adapt_log[:, adapt_every] = vec(θ_curr)
+                    adapt_prop_width!(prop_width, adapt_log)
+                    prop_dist = MvNormal(zeros(prop_width),
+                                         PDiagMat(prop_width))
+                    pw_idx = i ÷ finish_adapt + 1
+                    pf_knot_pw[:, pw_idx] = prop_width
+                end
+            end
     end
     knot_samp, lp, prop_width
-end
-
-function accept_rate(samples::Array)
-    I, J = size(samples)
-    accept = 0
-    for i in 1:I
-        for j in 2:J
-            if samples[i, j] != samples[i, j - 1]
-                accept += 1
-            end
-        end
-    end
-    accept / length(samples)
-end
-
-function adapt_prop_width(samples::Array{Float64, 2},
-                          prop_width::Array{Float64, 1})
-    P = size(samples, 1)
-
-    for p in 1:P
-        acc = accept_rate(samples[p, :])
-        # Too many rejections: halve proposal width
-        if acc < 0.3
-            prop_width[p] = prop_width[p] / 2
-        # Too many accepted: double proposal width
-        elseif acc > 0.6
-            prop_width[p] = prop_width[p] * 2
-        end
-    end
-    prop_width
 end
