@@ -1,11 +1,11 @@
 using Interpolations
 using DataFrames
 
-function create_interp_elev()
+function create_interp_elev(cores::DataFrame)
     cores = readtable("data/Cores.csv")
     boreholes = readtable("data/Boreholes.csv")
 
-    bh_loc = Array{Float64}(size(boreholes, 1), 2)
+    bh_loc = Array{Float64}(cores[[:Distance, :])
     for r in 1:size(boreholes, 1)
         bh_loc[r, 1] = parse(boreholes[r, :Point][4:6])
     end
@@ -22,7 +22,7 @@ function create_interp_elev()
     function interp_elevation(t)
         elev = Array{Float64, 1}(length(t))
         for i in 1:length(t)
-            if (t[i] .< min_t) | (t[i] .> max_t)
+            if (t[i] .< min_t) || (t[i] .> max_t)
                 elev[i] = elev_extr[transect_index(t[i])]
             else
                 elev[i] = elev_int[transect_index(t[i])]
