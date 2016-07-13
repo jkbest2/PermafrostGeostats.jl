@@ -1,0 +1,73 @@
+abstract AbstractBoreholeModel <: Any
+abstract AbstractBHModelData <: Any
+
+type PermafrostData <: AbstractBHModelData 
+    data_locs::Array{Float64, 2}
+    pf_status::BitArray{1}
+
+    function PermafrostData(bh_dat::BoreholeTransect)
+        notna = !isna(bh_dat.pf_status)
+        new(Array{Float64, 2}(bh_dat.locs[notna, :]),
+            BitArray{1}(bh_dat.pf_status[notna, :]))
+    end
+end
+
+function MCMCState(model::PermafrostModel,
+                   init::InitialValues)
+    θ = Dict{Symbol, Array{Float64}}(:pf_knots => init.θ[:pf_knots])
+    aux = Dict{Symbol, BitArray}(:pf_status => model.update!(
+
+type PermafrostModel <: AbstractBoreholeModel
+    θ_name::Array{Symbol}
+    θ_dim::Dict{Symbol, Any}
+    θ_index::Array{Tuple{Symbol, Int}, 1}
+    θ_prior::Dict{Symbol, Distribution}
+    knot_locs::Array{Float64, 2}
+    update!::Function
+    lp::Function
+
+    function PermafrostModel(knot_locs::Array{Float64, 2},
+                             data::PermafrostData,
+                             kern::AbstractConvolutionKernel;
+                             prior::Distribution = Normal(0, 1),
+                             misclass = 1e-3)
+        kwt = knot_wt(knot_locs,
+                      kern,
+                      data.data_locs)
+        nknots = size(knot_locs, 1)
+
+        θ_ind = collect(zip(fill(:pf_knots, nknots), 1:nknots)
+
+        function update!(state::MCMCState,
+                         par::Symbol,
+                         idx::Integer,
+                         δ::Float64)
+            state.θ[:pf_knots][idx] += δ
+            state.aux[:pf_pred][:] = (kwt * State.θ[:pf_knots]) .> 0.
+        end
+
+        corr_lik = log(1. - misclass)
+        incorr_lik = log(misclass)
+        n_pfdata = length(data.pf_status)
+        function lp!(state::MCMCState,
+                     data::PermafrostData)
+            state.lp = loglikelihood(prior, state.θ[:pf_knots])
+            n_corr = sum(data.pf_status .== state.aux[:pf_pred])
+            state.lp += n_corr * corr_lik 
+            stat.lp += (n_pfdata - n_corr) * incorr_lik
+        end
+
+        
+        θ_ind = reduce(vcat,
+                    [collect(zip(fill(k, length(θ_curr[k])), 1:length(θ_curr[k])))
+                        for k in keys(θ_curr)])
+        θ_seq = Array{Tuple{Symbol, Int}, 1}(θ_ind)
+
+        new([:pf_knots],
+            Dict(:pf_knots => nknots),
+            θ_ind,
+            Dict(:pf_knots => prior),
+            knot_locs,
+            update!,
+            lp!)     
+end

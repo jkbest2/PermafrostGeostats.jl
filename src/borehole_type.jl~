@@ -1,0 +1,26 @@
+immutable DoubleDict{T1, T2}
+    V1::T1
+    V2::T2
+
+    function DoubleDict(V1::T1, V2::T2)
+        if length(V1) != length(V2)
+            error("V1, V2 must be the same length")
+        elseif T1 == T2 
+            error("V1 and V2 must have different types")
+        end
+
+        new(V1, V2)
+    end
+end
+
+type BoreholeTransect
+    locs::Array{Real, 2}
+    pf::DataArray{Bool, 1}
+    soil::DataArray{Integer, 1}
+    soil_assoc::Associative
+    log_res::DataArray{Real, 1}
+    res_interp::Interpolations.AbstractInterpolation
+    moisture::DataArray{Real, 1}
+    
+    
+    
