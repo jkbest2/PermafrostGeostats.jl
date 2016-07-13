@@ -78,31 +78,68 @@ function metrop_oneproc(knot_locs::Array{Float64, 2},
                        misclass)
     println("Iteration 1/", iters, ": lp = ", lp[1])
 
-    # Warmup iterations
-    for i in 2:iters
-        knot_adj = rand(prop_dist, 1)
-        # Change the knot in a random order; ask Margaret exactly why?
-        knot_seq = sample(1:nknots, nknots, replace = false)
-        knot_samp[:, i] = knot_samp[:, i - 1]
-        lp[i] = lp[i - 1]
-        for k in knot_seq
-            knot_samp[k, i] += knot_adj[k]
-            prop_lp = oneproc_lp(knot_samp[:, i],
-                                 dat_kwt,
-                                 data_vals,
-                                 misclass)
-            if prop_lp > lp[i]
-                # Accept higher-prob sample
-                lp[i] = prop_lp
-            elseif log(rand(1))[1] > (prop_lp - lp[i])
-                # Reject lower-prob sample
-                knot_samp[k, i] = knot_samp[k, i - 1]
-            else
-                # Accept lower-prob sample
-                lp[i] = prop_lp
-            end
+    # HDF5 setup
+    if !isfile(results_file)
+        m = "w"
+    else
+        m = "r+"
+    end
+    results = h5open(results_file, m)
+    g_create(results, run_name)
+    run_results = results[run_name]
+
+    try
+        nsave = fld(iters, thin)
+        β_res_samp = d_create(run_results, "β_res",
+                              datatype(Float64),
+                              dataspace(2, nsoilprocs, nsave),
+                              "chunk", (2, nsoilprocs, 1))
+        σ_samp = d_create(run_results, "σ",
+                          datatype(Float64),
+                          dataspace(1, nsave))
+        lp_samp = d_create(run_results, "lp",
+                           datatype(Float64),
+                           dataspace(1, nsave))
+
+        if finish_adapt > 0
+            g_create(run_results, "prop_width")
+            pw_log = run_results["prop_width"]
+            β_res_pw = d_create(pw_log, "β_res",
+                                datatype(Float64),
+                                dataspace(length(θ_curr[:β_res]),
+                                          finish_adapt ÷ adapt_every + 1))
+            β_res_pw[:, 1] = prop_width[:β_res]
+            σ_pw = d_create(pw_log, "σ",
+                            datatype(Float64),
+                            dataspace(1,
+                                      finish_adapt ÷ adapt_every + 1))
+            σ_pw[:, 1] = prop_width[:σ]
         end
-        println("Iteration ", i, "/", iters, ": lp = ", lp[i])
+            # Warmup iterations
+            for i in 2:iters
+                knot_adj = rand(prop_dist, 1)
+                # Change the knot in a random order; ask Margaret exactly why?
+                knot_seq = sample(1:nknots, nknots, replace = false)
+                knot_samp[:, i] = knot_samp[:, i - 1]
+                lp[i] = lp[i - 1]
+                for k in knot_seq
+                    knot_samp[k, i] += knot_adj[k]
+                    prop_lp = oneproc_lp(knot_samp[:, i],
+                                         dat_kwt,
+                                         data_vals,
+                                         misclass)
+                    if prop_lp > lp[i]
+                        # Accept higher-prob sample
+                        lp[i] = prop_lp
+                    elseif log(rand(1))[1] > (prop_lp - lp[i])
+                        # Reject lower-prob sample
+                        knot_samp[k, i] = knot_samp[k, i - 1]
+                    else
+                        # Accept lower-prob sample
+                        lp[i] = prop_lp
+                    end
+                end
+                println("Iteration ", i, "/", iters, ": lp = ", lp[i])
 
             # Adapt proposal distribution during warmup
             if i ≤ finish_adapt
@@ -119,6 +156,11 @@ function metrop_oneproc(knot_locs::Array{Float64, 2},
                     pf_knot_pw[:, pw_idx] = prop_width
                 end
             end
+        finally
+            close(results)
+        end
+        nothing
     end
+    finally 
     knot_samp, lp, prop_width
 end
