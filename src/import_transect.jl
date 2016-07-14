@@ -19,23 +19,24 @@ Convert water content (0, 1) to gravimetric moisture content (0, ∞).
 wc2gmc(wc, k = 1) = k .* (wc ./ (1 .- wc))
 
 """
-    import_transect(loc_csv::AbstractString,
-                    core_csv::AbstractString)
+    import_transect(core_csv::AbstractString,
+                    loc_csv::AbstractString)
 
 Import transect from .csv of borehole locations and .csv of core obervations.
 DataFrame of locations joined with observations is returned. `loc_csv` controls
 which transect is returned. Returns tuple of cores DataFrame and locations
 DataFrame.
 """
-function import_transect(loc_csv::AbstractString,
-                         core_csv::AbstractString)
+function import_transect(core_csv::AbstractString,
+                         loc_csv::AbstractString)
     locs = readtable(loc_csv)
     if !(:Distance ∈ names(locs))
         locs[:Distance] = [Float64(parse(locs[r, :Point][4:6]))
                             for r in size(locs, 1)]
     end
+    locs[:Distance] = DataArray{Float64}(locs[:Distance])
     locs[:SurfaceElevation] = locs[:Elevation]
-    locs = locs[[:Point, :Northing, :Easting, :SurfaceElevation, :Distance]]
+    locs = locs[[:Point, :Distance, :SurfaceElevation, :Northing, :Easting]]
 
     cores = readtable(core_csv,
                       eltypes = [AbstractString,
