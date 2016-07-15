@@ -28,8 +28,8 @@ function import_transect(core_csv::AbstractString,
                          loc_csv::AbstractString)
     locs = readtable(loc_csv)
     if !(:Distance ∈ names(locs))
-        locs[:Distance] = [Float64(parse(locs[r, :Point][4:6]))
-                            for r in size(locs, 1)]
+        locs[:Distance] = [parse(Float64, p[4:6])
+                            for p in locs[:Point]]
     end
     locs[:Distance] = DataArray{Float64}(locs[:Distance])
     locs[:SurfaceElevation] = locs[:Elevation]
