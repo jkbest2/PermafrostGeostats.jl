@@ -53,6 +53,7 @@ end
                       nknots::Integer = size(knot_locs, 1),
                       misclass::Float64 = 1e-3,
                       iters::Integer = 2000,
+                      thin::Integer = 1,
                       warmup::Integer = 1000,
                       finish_adapt::Integer = 800,
                       adapt_every::Integer = 100,
@@ -74,6 +75,7 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
                            nknots::Integer = size(knot_locs, 1),
                            misclass::Float64 = 1e-3,
                            iters::Integer = 2000,
+                           thin::Integer = 1,
                            warmup::Integer = 1000,
                            finish_adapt::Integer = 800,
                            adapt_every::Integer = 100,
@@ -115,9 +117,9 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
                              "chunk", (nknots, 1))
         curr_knots = init
         prop_knots = copy(init)
-        curr_pred = BitArray{Int}(ndata)
+        curr_pred = BitArray{1}(ndata)
         curr_pred  = (data_kwt * curr_knots) .> 0
-        prop_pred = BitArray{Int}(ndata)
+        prop_pred = BitArray{1}(ndata)
         lp = d_create(run_results, "lp",
                       datatype(Float64), dataspace(fld(iters, thin), 1))
         curr_lp = 0.0
@@ -130,14 +132,14 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
         knot_seq = Array{Integer, 1}(nknots)
 
         if finish_adapt > 0
-            adapt_log = Array{Float64, 2}(nparam, adapt_every)
+            adapt_log = Array{Float64, 2}(nknots, adapt_every)
             g_create(run_results, "prop_width")
             pw_log = run_results["prop_width"]
             knot_pw_log = d_create(pw_log, "knots",
                                    datatype(Float64),
                                    dataspace(nknots,
                                              finish_adapt ÷ adapt_every + 1),
-                                    "chunk", (nparam, 1))
+                                    "chunk", (nknots, 1))
             knot_pw_log[:, 1] = prop_width
         else
             pw_log["prop_width/knots"] = prop_width
@@ -154,7 +156,7 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
                                    prop_knots,
                                    prop_pred,
                                    data_kwt)
-                prop_lp = permafrost_lp(prop_kval,
+                prop_lp = permafrost_lp(prop_knots,
                                         prop_pred,
                                         data_vals,
                                         misclass)
