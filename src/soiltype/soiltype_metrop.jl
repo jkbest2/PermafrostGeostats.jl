@@ -1,7 +1,7 @@
 """
     soiltype_lp(kval::Array{Float64, 1},
-                soil_pred::Array{Integer, 1},
-                soil_data::Array{Integer, 1},
+                pred_soil::Array{Integer, 1},
+                data_vals::Array{Integer, 1},
                 misclass::Float64;
                 prior = Normal(0, 1))
 
@@ -33,9 +33,9 @@ end
 
 Predict soil type (as an integer) from the processes.
 """
-function soiltype_predict!(pred::Vector{Integer},
-                           proc::Array{Float64, 2})
-    pred[:] = [indmax(proc[r, :]) for r in 1:size(proc, 1)]
+function soiltype_predict!{T <: Integer}(pred::Vector{T},
+                                         proc::Array{Float64, 2})
+    pred[:] = T[indmax(proc[r, :]) for r in 1:size(proc, 1)]::Array{T, 1}
 end
 
 """
@@ -54,7 +54,7 @@ function soiltype_update!(idx::Int,
                           kwt::Array{Float64, 2})
     change_proc = cld(idx, size(knots, 1))
     knots[idx] += adj
-    procs[:, change_proc] = kwt * knots[:, change_proc]
+    proc[:, change_proc] = kwt * knots[:, change_proc]
     nothing
 end
 
@@ -111,7 +111,7 @@ function soiltype_metrop(knot_locs::Array{Float64, 2},
 
     # Data setup
     data_locs = Array{Float64, 2}(data[[:Distance, :Elevation]])
-    data_soil = Array{Int, 1}(soil_data[:Soil])
+    data_soil = Array{Int, 1}(data[:Soil])
     data_kwt = knot_wt(knot_locs,
                        kern,
                        data_locs)
