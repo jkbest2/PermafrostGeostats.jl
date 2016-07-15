@@ -1,6 +1,3 @@
-import Base: getindex
-
-import StatsFuns: logit, logistic
 logit(x::DataArray) = 1 ./ (1 .+ exp(x))
 logistic(p::DataArray) = log(p ./ (1 .- p))
 
