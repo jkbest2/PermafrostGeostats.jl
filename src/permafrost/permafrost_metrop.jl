@@ -27,16 +27,22 @@ function permafrost_lp(kval::Array{Float64, 1},
 end
 
 """
-    permafrost_update!(pred::BitArray{1},
+    permafrost_update!(idx::Integer,
+                       adj::Float64,
                        kval::Vector{Float64},
+                       pred::BitArray{1},
                        kwt::Array{Float64, 2})
 
 Updates predictions of permafrost in-place.
 """
-function permafrost_update!(pred::BitArray{1},
+function permafrost_update!(idx::Integer,
+                            adj::Float64,
                             kval::Vector{Float64},
+                            pred::BitArray{1},
                             kwt::Array{Float64, 2})
+    kval[idx] += adj
     pred[:] = (kwt * kval) .> 0
+end
 
 """
     permafrost_metrop(knot_locs::Array{Float64, 2},
@@ -53,7 +59,8 @@ function permafrost_update!(pred::BitArray{1},
                       prop_width::Array{Float64, 1} =
                                fill(0.5, length(nknots)),
                       init::Array{Float64, 1} =
-                               randn(nknots))
+                               randn(nknots),
+                      RNG::AbstractRNG = MersenneTwister(rand(UInt64)))
 
 Function for performing Markov Chain Monte Carlo using the Metropolis
 algorithm. Samples are saved in HDF5 format in `run_name.hdf5`. Specialized
@@ -73,7 +80,8 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
                            prop_width::Array{Float64, 1} =
                                     fill(0.5, length(nknots)),
                            init::Array{Float64, 1} =
-                                    randn(nknots))
+                                    randn(nknots),
+                           RNG::AbstractRNG = MersenneTwister(rand(UInt64)))
 
     # Checks
     @assert 0 < misclass < 1 "Misclass rate must be ∈ (0, 1)"
@@ -108,7 +116,7 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
         curr_knots = init
         prop_knots = copy(init)
         curr_pred = BitArray{Int}(ndata)
-        permafrost_update!(curr_pred, curr_knots, data_kwt)
+        curr_pred  = (data_kwt * curr_knots) .> 0
         prop_pred = BitArray{Int}(ndata)
         lp = d_create(run_results, "lp",
                       datatype(Float64), dataspace(fld(iters, thin), 1))
@@ -116,36 +124,42 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
         curr_lp = permafrost_lp(curr_knots,
                                 curr_pred,
                                 data_vals,
-                                misclass,)
-        prop_lp = 0.0
+                                misclass)
+        prop_lp = -Inf
         knot_adj = Array{Float64, 1}(nknots)
         knot_seq = Array{Integer, 1}(nknots)
 
         if finish_adapt > 0
+            adapt_log = Array{Float64, 2}(nparam, adapt_every)
             g_create(run_results, "prop_width")
             pw_log = run_results["prop_width"]
             knot_pw_log = d_create(pw_log, "knots",
                                    datatype(Float64),
                                    dataspace(nknots,
-                                             finish_adapt ÷ adapt_every + 1))
+                                             finish_adapt ÷ adapt_every + 1),
+                                    "chunk", (nparam, 1))
             knot_pw_log[:, 1] = prop_width
+        else
+            pw_log["prop_width/knots"] = prop_width
         end
 
         knot_idx = collect(1:nknots)
         @showprogress "Sampling..." for i in 1:iters
-            knot_adj[:] = prop_width .* randn(nknots)
-            knot_seq[:] = shuffle(knot_idx)
+            knot_adj[:] = prop_width .* randn(RNG, nknots)
+            knot_seq[:] = shuffle(RNG, knot_idx)
+
             for k in knot_seq
-                prop_pred[k] += knot_adj[k]
-                permafrost_update!(prop_pred,
+                permafrost_update!(k,
+                                   knot_adj[k],
                                    prop_knots,
+                                   prop_pred,
                                    data_kwt)
                 prop_lp = permafrost_lp(prop_kval,
                                         prop_pred,
                                         data_vals,
                                         misclass)
 
-            if (prop_lp ≥ curr_lp) || (prop_lp - curr_lp) > log(rand(1))[1]
+            if (prop_lp ≥ curr_lp) || (prop_lp - curr_lp) > log(rand(RNG))
                     # Accept
                     curr_lp = prop_lp
                     curr_knots[:] = prop_knots
