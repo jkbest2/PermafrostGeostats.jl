@@ -135,8 +135,10 @@ function soil2int(cores::DataFrame,
     simp_dict = Dict(zip(soil_str, s2))
 
     s2 = unique(s2)
-    splice!(s2, findin(s2, [ice])[1])
-    append!(s2, [ice])
+    if ice ∈ s2
+        splice!(s2, findin(s2, [ice])[1])
+        append!(s2, [ice])
+    end
 
     d2 = indexmap(s2)
 
