@@ -36,14 +36,20 @@ module BoreholePaperPackage
         permafrost_lp,
         permafrost_update!,
         permafrost_metrop,
+        # permafrost/permafrost_interp.jl
+        permafrost_inter,
         # soiltype/soiltype_metrop.jl
         soiltype_lp,
         soiltype_update!,
         soiltype_metrop,
+        # soiltype/soiltype_interp.jl
+        soiltype_interp,
         # watercontent/watercontent_metrop.jl
         watercontent_lp,
         watercontent_update!,
         watercontent_metrop,
+        # watercontent/watercontent_interp.jl
+        watercontent_interp,
         # BoreholePaperPackage.jl
         locgrid
 
@@ -51,8 +57,11 @@ module BoreholePaperPackage
     include("mcmc_adapt.jl")
     include("interpolators.jl")
     include("permafrost/permafrost_metrop.jl")
+    include("permafrost/permafrost_interp.jl")
     include("soiltype/soiltype_metrop.jl")
+    include("soiltype/soiltype_interp.jl")
     include("watercontent/watercontent_metrop.jl")
+    include("watercontent/watercontent_interp.jl")
 
     function locgrid(X::FloatRange, Y::FloatRange)
         reduce(vcat,
