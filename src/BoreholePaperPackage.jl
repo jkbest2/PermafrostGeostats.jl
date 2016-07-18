@@ -43,7 +43,9 @@ module BoreholePaperPackage
         # watercontent/watercontent_metrop.jl
         watercontent_lp,
         watercontent_update!,
-        watercontent_metrop
+        watercontent_metrop,
+        # BoreholePaperPackage.jl
+        locgrid
 
     include("import_transect.jl")
     include("mcmc_adapt.jl")
@@ -51,4 +53,9 @@ module BoreholePaperPackage
     include("permafrost/permafrost_metrop.jl")
     include("soiltype/soiltype_metrop.jl")
     include("watercontent/watercontent_metrop.jl")
+
+    function locgrid(X::FloatRange, Y::FloatRange)
+        reduce(vcat,
+               [hcat(x, y) for y in Y, x in X])
+    end
 end
