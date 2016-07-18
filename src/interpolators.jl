@@ -43,7 +43,9 @@ end
 
 """
     create_interp_lres(res_csv::AbstractString,
-                       tsect_name::AbstractString)
+                       tsect_name::AbstractString,
+                       interp_elev::Function;
+                       [res_col = :Resistivit])
 
 Import resistivity data and construct an interpolator for log resistivity.
 Returns a function that performs a linear interpolation of log resistivity
@@ -53,8 +55,15 @@ function create_interp_lres(res_csv::AbstractString,
                             tsect_name::AbstractString,
                             interp_elev::Function;
                             res_col = :Resistivit)
-    resist = readtable(res_csv, header = true)
+    resist = readtable(res_csv,
+                       header = true)
     resist = resist[resist[:Transect] .== tsect_name, :]
+    resist[isnan(resist[res_col]), res_col] = NA
+
+    NA_dists = by(resist, :Distance,
+                  df -> DataFrame(NoNA = !anyna(df[res_col])))
+    resist = join(resist, NA_dists, on = :Distance, kind = :left)
+    resist = resist[resist[:NoNA], :]
 
     res_dist = unique(Array{Float64}(resist[:Distance]))
     res_depth = unique(Array{Float64}(resist[:Depth]))
@@ -84,7 +93,7 @@ function create_interp_lres(res_csv::AbstractString,
 
         for (r, (tr, dp)) in enumerate(zip(dist, depth))
             if dp .> min_depth
-                lres[r] = lres_int[tr, dp]
+                lres[r] = lres_int[dp, tr]
             else
                 lres[r] = NA
             end
