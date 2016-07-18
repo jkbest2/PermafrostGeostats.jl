@@ -55,7 +55,7 @@ function watercontent_update!(change_param::Symbol,
 
     if change_param == :β_res
         θ[:β_res][change_ind] += change_adj
-        for i in 1:length(pred[:lwc_reg])
+        for i in 1:length(pred[:lwc])
             pred[:lwc][i] = (data[i, :] *
                                  θ[:β_res][:, data[:soil][i]])[1]
         end
@@ -136,7 +136,10 @@ function watercontent_metrop(knot_locs::Array{Float64, 2},
     # Data setup
     nknots = size(knot_locs, 1)
     data_locs = Array{Float64, 2}(data[[:Distance, :Elevation]])
-    data_lwc = Array{Float64, 2}(hcat(ones(data[:LWC], data[:LWC])))
+    obs = Dict{Symbol, AbstractArray}()
+    obs[:lwc] = Array{Float64, 2}(hcat(ones(data[:LWC]), data[:LWC]))
+    obs[:lres] = Array{Float64, 1}(data[:lres])
+    obs[:soil] = Array{Integer, 1}(data[:Soil])
     ndata = size(data_locs, 1)
     nsoilprocs = size(init[:β_res], 2)
 
