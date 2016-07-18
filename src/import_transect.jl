@@ -48,7 +48,9 @@ function import_transect(core_csv::AbstractString,
 
     cores = join(locs, cores, on = :Point, kind = :left)
 
-    cores[:Elevation] = cores[:SurfaceElevation] .- 0.01 * cores[:Depth]
+    cores[:Depth] = 0.01 * cores[:Depth]
+
+    cores[:Elevation] = cores[:SurfaceElevation] .- cores[:Depth]
     cores = cores[[:Point, :Distance, :Elevation, :Depth,
                    :PF_code, :USCS_code, :GMC]]
 
@@ -108,7 +110,8 @@ Converts soil type string identifiers to integers for modeling convenience.
 Sorts so that "ICE" type is last. Combination classifications (split by '+')
 are converted to the non-"ICE" type or the first listed if neither is "ICE".
 
-Optional arguments specify the column where soil types are recorded, and the string the identifies massive ice observations.
+Optional arguments specify the column where soil types are recorded, and the
+string the identifies massive ice observations.
 
 Also returns a SoilMapping object that can be used to convert between string
 and integer representations of the soil types.
