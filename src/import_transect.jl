@@ -100,6 +100,7 @@ end
 
 getindex(sm::SoilMapping, idx::AbstractString) = sm.soil_int[idx]
 getindex(sm::SoilMapping, idx::Integer) = sm.int_soil[idx]
+haskey(SM::SoilMapping, key) = haskey(SM.soil_int, key) || haskey(SM.int_soil, key)
 
 """
     soil2int(cores::DataFrame,
