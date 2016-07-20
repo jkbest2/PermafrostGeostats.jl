@@ -1,4 +1,3 @@
-
 __precompile__()
 
 module BoreholePaperPackage
@@ -11,7 +10,7 @@ module BoreholePaperPackage
     using Interpolations
     using PyPlot
 
-    import Base.getindex
+    import Base: getindex, haskey
     import StatsFuns: logit, logistic
 
     export
@@ -24,6 +23,7 @@ module BoreholePaperPackage
         transform_gmc,
         SoilMapping,
         getindex,
+        haskey,
         soil2int,
         # interpolators.jl
         create_interp_elev,
