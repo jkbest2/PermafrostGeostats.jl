@@ -10,12 +10,13 @@ corresponding to the locations in `new_locs`.
 """
 function permafrost_interp(sample_file::AbstractString,
                            run_name::AbstractString,
-                           kern::AbstractConvolutionKernel,
-                           new_locs::Array{Float64, 2})
-    pf_knots = h5read(sample_file, string(run_name, "/knots"))
+                           kwt::AbstractArray,
+                           new_locs::Array{Float64, 2};
+                           knot_name = "knots")
+    pf_knots = h5read(sample_file, string(run_name, "/", knot_name))
     nlocs = size(new_locs, 1)
     pred = Vector{Float64}(nlocs)
-    for loc in 1:nlocs
+    @showprogress for loc in 1:nlocs
         pred[loc] = mean(kwt[loc, :] * pf_knots .> 0)
     end
     pred
