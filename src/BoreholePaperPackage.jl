@@ -37,7 +37,7 @@ module BoreholePaperPackage
         permafrost_update!,
         permafrost_metrop,
         # permafrost/permafrost_interp.jl
-        permafrost_inter,
+        permafrost_interp,
         # soiltype/soiltype_metrop.jl
         soiltype_lp,
         soiltype_update!,
@@ -63,6 +63,11 @@ module BoreholePaperPackage
     include("watercontent/watercontent_metrop.jl")
     include("watercontent/watercontent_interp.jl")
 
+    """
+        locgrid(X::FloatRange, Y::FloatRange)
+
+    Returns a 2-column Array of the Cartesian product of `X` and `Y`.
+    """
     function locgrid(X::FloatRange, Y::FloatRange)
         reduce(vcat,
                [hcat(x, y) for y in Y, x in X])

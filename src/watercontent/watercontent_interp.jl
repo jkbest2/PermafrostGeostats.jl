@@ -11,15 +11,27 @@ on the logistic scale corresponding to the locations in `new_locs`.
 """
 function watercontent_interp(sample_file::AbstractString,
                              run_name::AbstractString,
-                             kern::AbstractConvolutionKernel,
-                             new_locs::Array{Float64, 2},
+                             soil_type::Array{Int, 1},
+                             log_res::AbstractArray,
                              summary::Function = mean)
-    wc_knots = h5read(sample_file, string(run_name, "/knots"))
-    nlocs = size(new_locs, 1)
-    pred = Vector{Float64}(nlocs)
-    @showprogress for loc in 1:nlocs
-        pred[loc] = summary(kwt[loc, :] * pf_knots)
+    β_res = h5read(sample_file, string(run_name, "/β_res"))
+    β = permutedims(β_res, [1, 3, 2])
+
+    lres = hcat(ones(log_res), log_res)
+    nlocs = length(log_res)
+
+    pred = Array{Float64, 1}(nlocs)
+    @showprogress for l in 1:nlocs
+        pred[l] = summary(lres[l, :] * β[:, :, soil_type[l]])[1]
     end
     pred
 end
 
+function interp_lwc!(pred::Array{Float64, 1},
+                     β_res::Array{Float64, 3},
+                     soil_type::Array{Int, 1},
+                     log_res::Array{Float64, 2};
+                     summary::Function = mean)
+
+    nothing
+end
