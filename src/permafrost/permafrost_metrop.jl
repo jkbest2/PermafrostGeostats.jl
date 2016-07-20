@@ -112,7 +112,7 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
     try
         # Initial set up
         # prop_dist = MvNormal(zeros(nknots), PDiagMat(prop_width))
-        knot_samp = d_create(run_results, "knot_values",
+        knot_samp = d_create(run_results, "knots",
                              datatype(Float64), dataspace(nknots, fld(iters, thin)),
                              "chunk", (nknots, 1))
         curr_knots = init

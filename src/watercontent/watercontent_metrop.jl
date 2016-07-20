@@ -1,11 +1,7 @@
-using ProgressMeter
-using Distributions
-using HDF5
-
 """
-    function watercontent_lp(θ::Dict{Symbol, AbstractArray},
-                             pred::Dict{Symbol, AbstractArray},
-                             data::Dict{Symbol, AbstractArray},
+    function watercontent_lp(θ::Dict{Symbol, Array},
+                             pred::Dict{Symbol, Array},
+                             data::Dict{Symbol, Array},
                              prior::Dict{Symbol, Distribution} =
                               Dict{Symbol, Distribution}(
                                       :β_res => Normal(0., 20.),
@@ -14,9 +10,9 @@ using HDF5
 Log posterior of the water content model, using a linear relationship between
 log resistivity and water content that is specific to each soil type.
 """
-function watercontent_lp(θ::Dict{Symbol, AbstractArray},
-                         pred::Dict{Symbol, AbstractArray},
-                         data::Dict{Symbol, AbstractArray},
+function watercontent_lp(θ::Dict{Symbol, Array},
+                         pred::Dict{Symbol, Array},
+                         data::Dict{Symbol, Array},
                          prior::Dict{Symbol, Distribution} =
                           Dict{Symbol, Distribution}(
                                   :β_res => Normal(0., 20.),
@@ -34,18 +30,18 @@ end
     watercontent_update!(change_param::Symbol,
                          change_ind::Int,
                          change_adj::Float64,
-                         θ::Dict{Symbol, AbstractArray},
-                         pred::Dict{Symbol, AbstractArray},
-                         data::Dict{Symbol, AbstractArray})
+                         θ::Dict{Symbol, Array},
+                         pred::Dict{Symbol, Array},
+                         data::Dict{Symbol, Array})
 
 Update watercontent parameters and predictions in place.
 """
 function watercontent_update!(change_param::Symbol,
                               change_ind::Int,
                               change_adj::Float64,
-                              θ::Dict{Symbol, AbstractArray},
-                              pred::Dict{Symbol, AbstractArray},
-                              data::Array{Float64, 2})
+                              θ::Dict{Symbol, Array},
+                              pred::Dict{Symbol, Array},
+                              data::Dict{Symbol, Array})
     if change_param == :σ
         if (θ[:σ] + change_adj)[1] > 0
             θ[:σ] += change_adj
@@ -56,7 +52,7 @@ function watercontent_update!(change_param::Symbol,
     if change_param == :β_res
         θ[:β_res][change_ind] += change_adj
         for i in 1:length(pred[:lwc])
-            pred[:lwc][i] = (data[i, :] *
+            pred[:lwc][i] = (data[:lres][i, :] *
                                  θ[:β_res][:, data[:soil][i]])[1]
         end
     end
@@ -64,22 +60,20 @@ function watercontent_update!(change_param::Symbol,
 end
 
 """
-    watercontent_update!(θ::Dict{Symbol, AbstractArray},
-                         pred::Dict{Symbol, AbstractArray},
-                         data::Dict{Symbol, AbstractArray})
+    watercontent_update!(θ::Dict{Symbol, Array},
+                         pred::Dict{Symbol, Array},
+                         data::Dict{Symbol, Array})
 
 Don't update parameter values, but calculate the predicted values. Useful for
 finding initial prediction.
 """
-function watercontent_update!(θ::Dict{Symbol, AbstractArray},
-                              pred::Dict{Symbol, AbstractArray},
-                              data::Dict{Symbol, AbstractArray})
-    for i in 1:length(pred[:lwc_reg])
-        proc[:lwc_reg][i] = (data[:lres][i, :] *
+function watercontent_update!(θ::Dict{Symbol, Array},
+                              pred::Dict{Symbol, Array},
+                              data::Dict{Symbol, Array})
+    for i in 1:length(pred[:lwc])
+        pred[:lwc][i] = (data[:lres][i, :] *
                                  θ[:β_res][:, data[:soil][i]])[1]
     end
-
-    pred[:lwc][:] = proc[:lwc_reg]
     nothing
 end
 
@@ -98,7 +92,7 @@ end
                            Dict{Symbol, Array{Float64, 1}}(
                                :β_res => fill(0.5, 2 * 6),
                                :σ => [0.1]),
-                        init::Dict{Symbol, AbstractArray} =
+                        init::Dict{Symbol, Array} =
                            Dict{Symbol, Array{Float64}}(
                                :β_res => randn(2, 6),
                                :σ => randexp(1)),
@@ -118,27 +112,27 @@ function watercontent_metrop(knot_locs::Array{Float64, 2},
                              warmup::Integer = 1000,
                              finish_adapt::Integer = 800,
                              adapt_every::Integer = 100,
-                             prop_width::Dict{Symbol, Array{Float64, 1}} =
-                                Dict{Symbol, Array{Float64, 1}}(
+                             prop_width::Dict{Symbol, Array} =
+                                Dict{Symbol, Array}(
                                     :β_res => fill(0.5, 2 * 6),
                                     :σ => [0.1]),
-                             init::Dict{Symbol, AbstractArray} =
-                                Dict{Symbol, Array{Float64}}(
+                             init::Dict{Symbol, Array} =
+                                Dict{Symbol, Array}(
                                     :β_res => randn(2, 6),
                                     :σ => randexp(1)),
                              RNG::AbstractRNG = MersenneTwister(rand(UInt64)))
 
     # Checks
-    @assert init[:σ] > 0 "Initial σ must be positive"
+    @assert init[:σ][1] > 0 "Initial σ must be positive"
     @assert warmup ≤ iters "Number of iterations must be larger than warmup"
     @assert all((k) -> length(init[k]) == length(prop_width[k]), keys(init)) "Initial values and proposal widths must have same dimensions."
 
     # Data setup
     nknots = size(knot_locs, 1)
     data_locs = Array{Float64, 2}(data[[:Distance, :Elevation]])
-    obs = Dict{Symbol, AbstractArray}()
-    obs[:lwc] = Array{Float64, 2}(hcat(ones(data[:LWC]), data[:LWC]))
-    obs[:lres] = Array{Float64, 1}(data[:lres])
+    obs = Dict{Symbol, Array}()
+    obs[:lres] = Array{Float64, 2}(hcat(ones(data[:lres]), data[:lres]))
+    obs[:lwc] = Array{Float64, 1}(data[:LWC])
     obs[:soil] = Array{Integer, 1}(data[:Soil])
     ndata = size(data_locs, 1)
     nsoilprocs = size(init[:β_res], 2)
@@ -151,19 +145,19 @@ function watercontent_metrop(knot_locs::Array{Float64, 2},
         θ_len[k] = length(θ_curr[k])
     end
 
-    pred_curr = Dict{Symbol, AbstractArray}(
+    pred_curr = Dict{Symbol, Array}(
                     :lwc => Array{Float64, 1}(ndata))
-    pred_prop = Dict{Symbol, AbstractArray}(
+    pred_prop = Dict{Symbol, Array}(
                     :lwc => Array{Float64, 1}(ndata))
 
-    update!(θ_curr,
-            pred_curr,
-            obs)
-    update!(θ_prop,
-            pred_prop,
-            obs)
+    watercontent_update!(θ_curr,
+                         pred_curr,
+                         obs)
+    watercontent_update!(θ_prop,
+                         pred_prop,
+                         obs)
 
-    lp_curr = wc_lp(θ_curr, pred_curr, obs)
+    lp_curr = watercontent_lp(θ_curr, pred_curr, obs)
     lp_prop = -Inf
 
     θ_adj = Dict{Symbol, Array{Float64, 1}}()
@@ -203,7 +197,7 @@ function watercontent_metrop(knot_locs::Array{Float64, 2},
                            dataspace(1, nsave))
 
         if finish_adapt > 0
-            adapt_log = Dict{Symbol, AbstractArray}()
+            adapt_log = Dict{Symbol, Array}()
             for k in keys(θ_curr)
                 adapt_log[k] = Array{Float64}(length(θ_curr[k]), adapt_every)
             end
@@ -240,17 +234,17 @@ function watercontent_metrop(knot_locs::Array{Float64, 2},
                 if (lp_prop ≥ lp_curr) || log(rand(RNG)) < (lp_prop - lp_curr)
                     lp_curr = lp_prop
                     θ_curr[par][idx] = θ_prop[par][idx]
-                    for k in keys(proc_curr)
-                        proc_curr[k] = copy(proc_prop[k])
-                    end
+             #        for k in keys(proc_curr)
+             #            proc_curr[k] = copy(proc_prop[k])
+             #        end
                     for k in keys(pred_curr)
                         pred_curr[k] = copy(pred_prop[k])
                     end
                 else
                     θ_prop[par][idx] = θ_curr[par][idx]
-                    for k in keys(proc_curr)
-                        proc_prop[k] = copy(proc_curr[k])
-                    end
+             #        for k in keys(proc_curr)
+             #            proc_prop[k] = copy(proc_curr[k])
+             #        end
                     for k in keys(pred_curr)
                         pred_prop[k] = copy(pred_curr[k])
                     end
@@ -269,8 +263,8 @@ function watercontent_metrop(knot_locs::Array{Float64, 2},
                     for k in keys(θ_curr)
                         adapt_log[k][:, adapt_every] = vec(θ_curr[k])
                         adapt_prop_width!(prop_width[k], adapt_log[k])
-                        prop_dist[k] = MvNormal(zeros(prop_width[k]),
-                                                PDiagMat(prop_width[k]))
+                   #      prop_dist[k] = MvNormal(zeros(prop_width[k]),
+                   #                              PDiagMat(prop_width[k]))
                     end
                     pw_idx = i ÷ finish_adapt + 1
                     β_res_pw[:, pw_idx] = prop_width[:β_res]
