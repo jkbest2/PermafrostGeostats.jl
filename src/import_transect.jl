@@ -67,27 +67,33 @@ function import_transect(dsn::ODBC.DSN,
                          transect_name::AbstractString)
     loc_query = """
                 SELECT
-                Point
-                Distance
-                Elevation AS SurfaceElevation
-                Northing
-                Easting
+                  "Boreholes".point AS "Point",
+                  "Boreholes".distance AS "Distance",
+                  "Boreholes".elevation AS "SurfaceElevation",
+                  "Boreholes".northing AS "Northing",
+                  "Boreholes".easting AS "Easting"
                 FROM "Boreholes"
-                WHERE Transect = '$transect_name'
+                WHERE "Boreholes".transect = '$transect_name'
                 """
     locs = query(dsn, loc_query)
 
     core_query = """
-                 $loc_query
-                 LEFT JOIN Cores ON Boreholes.Point = Cores.Point
                  SELECT
-                 Point
-                 Distance
-                 Elevation AS SurfaceElevation - 0.01 * Depth
-                 Depth AS 0.01 * Depth
-                 PF_code
-                 USCS_code
-                 GMC
+                   "Cores".point as "Point",
+                   "Boreholes".distance AS "Distance",
+                   "Boreholes".elevation - 0.01 * "Cores".depth AS "Elevation",
+                   "Boreholes".elevation AS "SurfaceElevation",
+                   "Cores".gmc AS "GMC",
+                   "Cores".pf_code AS "PF_code",
+                   "Cores".uscs_code AS "USCS_code",
+                   0.01 * "Cores".depth AS "Depth"
+                 FROM
+                   public."Cores",
+                   public."Boreholes"
+                 WHERE
+                   "Cores".point = "Boreholes".point
+                   AND "Boreholes".transect = '$transect_name'
+                 ORDER BY "Boreholes".distance, "Cores".depth;
                  """
     cores = ODBC.query(dsn, core_query)
     cores, locs
