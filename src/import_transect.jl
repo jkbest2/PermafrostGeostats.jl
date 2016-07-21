@@ -58,6 +58,42 @@ function import_transect(core_csv::AbstractString,
 end
 
 """
+    import_transect(dsn::ODBC.DSN,
+                    transect_name::AbstractString)
+
+Import borehole locations and core information and preprocess for modelling.
+"""
+function import_transect(dsn::ODBC.DSN,
+                         transect_name::AbstractString)
+    loc_query = """
+                SELECT
+                Point
+                Distance
+                Elevation AS SurfaceElevation
+                Northing
+                Easting
+                FROM "Boreholes"
+                WHERE Transect = '$transect_name'
+                """
+    locs = query(dsn, loc_query)
+
+    core_query = """
+                 $loc_query
+                 LEFT JOIN Cores ON Boreholes.Point = Cores.Point
+                 SELECT
+                 Point
+                 Distance
+                 Elevation AS SurfaceElevation - 0.01 * Depth
+                 Depth AS 0.01 * Depth
+                 PF_code
+                 USCS_code
+                 GMC
+                 """
+    cores = ODBC.query(dsn, core_query)
+    cores, locs
+end
+
+"""
     transform_gmc(cores::DataFrame,
                   [k = 0.01,
                    col = :GMC,

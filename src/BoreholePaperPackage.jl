@@ -9,6 +9,7 @@ module BoreholePaperPackage
     using ProgressMeter
     using Interpolations
     using PyPlot
+    using ODBC
 
     import Base: getindex, haskey
     import StatsFuns: logit, logistic
