@@ -10,6 +10,7 @@ module BoreholePaperPackage
     using Interpolations
     using PyPlot
     using ODBC
+    using NullableArrays, WeakRefStrings
 
     import Base: getindex, haskey
     import StatsFuns: logit, logistic
