@@ -24,7 +24,7 @@ function create_interp_elev(locs::DataFrame,
 
     transect_index(t) = ((t .- t_min) ./ t_diff) + 1.
 
-    elev_int = interpolate(locs[e_col], BSpline(Quadratic(Flat())), OnGrid())
+    elev_int = interpolate(locs[e_col], BSpline(Quadratic(Flat())), OnCell())
     elev_extr = extrapolate(elev_int, Flat())
 
     function interp_elevation(t)
