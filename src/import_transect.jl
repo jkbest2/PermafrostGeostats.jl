@@ -58,10 +58,115 @@ function import_transect(core_csv::AbstractString,
 end
 
 """
+    nullable2dataarray{T <: Real}(nullarray::NullableArray{T, 1})
+
+Converts a NullableArray to a DataArray, inserting an NA where necessary.
+For subtypes of Real, also converts to Float64.
+"""
+function nullable2dataarray{T <: Real}(nullarray::NullableArray{T, 1})
+    DataArray(Vector{Float64}(nullarray.values), nullarray.isnull)
+end
+
+"""
+    nullable2dataarray{T <: WeakRefString}(nullarray::NullableArray{T, 1})
+Convert NullableArray of WeakRefString elements to DataArray of UTF8String
+elements.
+"""
+function nullable2dataarray{T <: WeakRefString}(nullarray::NullableArray{T, 1})
+    DataArray(Vector{UTF8String}(nullarray.values), nullarray.isnull)
+end
+
+"""
+    nullable2dataarray{T <: Any}(Nullarray::NullableArray{T, 1})
+
+Converts NullableArray to DataArray, preserving types.
+"""
+function nullable2dataarray{T <: Any}(nullarray::NullableArray{T, 1})
+    DataArray(nullarray.values, nullarrays.isnull)
+end
+
+"""
+    nulldf2dadf(df::AbstractDataFrame)
+
+Converts a DataFrame with Nullable elements to a DataFrame with DataArray
+columns. Also converts numeric columns to Float64.
+"""
+function nulldf2dadf(nulldf::AbstractDataFrame)
+    @assert all([elt <: Nullable for elt in eltypes(nulldf)])
+    dadf = DataFrame()
+    for col in names(nulldf)
+        dadf[col] = nullable2dataarray(nulldf[col])
+    end
+    dadf
+end
+
+"""
+    str2bool{T <: AbstractString}(da::AbstractDataArray{T})
+
+Convert a DataArray of strings to Bool. Assumes parse |> Bool will give
+reasonable output.
+"""
+function str2bool{T <: AbstractString}(da::AbstractDataArray{T})
+    DataArray(Bool[parse(str) for str in da.data], da.na)
+end
+
+"""
+    import_transect(dsn::ODBC.DSN,
+                    transect_name::AbstractString,
+                    use_cores::Tuple)
+
+Import borehole locations and core information and preprocess for modelling.
+Returns a DataFrame of all borehole locations and information for the cores at
+distances in `use_cores`.
+"""
+function import_transect(dsn::ODBC.DSN,
+                         transect_name::AbstractString,
+                         use_boreholes::Tuple)
+    loc_query = """
+                SELECT
+                  "Boreholes".point AS "Point",
+                  "Boreholes".distance AS "Distance",
+                  "Boreholes".elevation AS "SurfaceElevation",
+                  "Boreholes".northing AS "Northing",
+                  "Boreholes".easting AS "Easting"
+                FROM "Boreholes"
+                WHERE "Boreholes".transect = '$transect_name'
+                ORDER BY "Boreholes".distance
+                """
+    locs = ODBC.query(dsn, loc_query)
+    loc_df = nulldf2dadf(locs)
+
+    core_query = """
+                 SELECT
+                   "Cores".point as "Point",
+                   "Boreholes".distance AS "Distance",
+                   "Boreholes".elevation - 0.01 * "Cores".depth AS "Elevation",
+                   "Boreholes".elevation AS "SurfaceElevation",
+                   "Cores".gmc AS "GMC",
+                   "Cores".pf_code AS "PF_code",
+                   "Cores".uscs_code AS "USCS_code",
+                   0.01 * "Cores".depth AS "Depth"
+                 FROM
+                   public."Cores",
+                   public."Boreholes"
+                 WHERE
+                   "Cores".point = "Boreholes".point
+                   AND "Boreholes".transect = '$transect_name'
+                   AND "Boreholes".distance = $use_boreholes
+                 ORDER BY "Boreholes".distance, "Cores".depth;
+                 """
+    cores = ODBC.query(dsn, core_query)
+    core_df = nulldf2dadf(cores)
+    core_df[:PF_code] = str2bool(core_df[:PF_code])
+    core_df, loc_df
+end
+
+"""
     import_transect(dsn::ODBC.DSN,
                     transect_name::AbstractString)
 
 Import borehole locations and core information and preprocess for modelling.
+Returns a DataFrame of all borehole locations and cores in the transect.
 """
 function import_transect(dsn::ODBC.DSN,
                          transect_name::AbstractString)
@@ -74,8 +179,10 @@ function import_transect(dsn::ODBC.DSN,
                   "Boreholes".easting AS "Easting"
                 FROM "Boreholes"
                 WHERE "Boreholes".transect = '$transect_name'
+                ORDER BY "Boreholes".distance
                 """
-    locs = query(dsn, loc_query)
+    locs = ODBC.query(dsn, loc_query)
+    loc_df = nulldf2dadf(locs)
 
     core_query = """
                  SELECT
@@ -96,7 +203,9 @@ function import_transect(dsn::ODBC.DSN,
                  ORDER BY "Boreholes".distance, "Cores".depth;
                  """
     cores = ODBC.query(dsn, core_query)
-    cores, locs
+    core_df = nulldf2dadf(cores)
+    core_df[:PF_code] = str2bool(core_df[:PF_code])
+    core_df, loc_df
 end
 
 """

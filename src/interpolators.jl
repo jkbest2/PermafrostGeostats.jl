@@ -103,3 +103,73 @@ function create_interp_lres(res_csv::AbstractString,
     return interp_lres
 end
 
+"""
+    create_interp_lres(dsn::ODBC.DSN,
+                       tsect_name::AbstractString,
+                       interp_elev::Function;
+                       [res_col = "Resistivit"])
+
+Import resistivity data and construct an interpolator for log resistivity.
+Returns a function that performs a linear interpolation of log resistivity
+within the grid of inverted points.
+"""
+function create_interp_lres(dsn::ODBC.DSN,
+                            tsect_name::AbstractString,
+                            interp_elev::Function;
+                            res_col = "Resistivit")
+    resist = ODBC.query(dsn,
+                        """
+                        SELECT
+                          "Resistivity"."Distance",
+                          "Resistivity"."Depth",
+                          "Resistivity"."$res_col"
+                        FROM "Resistivity"
+                        WHERE "Resistivity"."Transect" = '$tsect_name'
+                        ORDER BY "Resistivity"."Distance", "Resistivity"."Depth"
+                        """)
+    resist = nulldf2dadf(resist)
+    resist[isnan(resist[res_col]), res_col] = NA
+
+    NA_dists = by(resist, :Distance,
+                  df -> DataFrame(NoNA = !anyna(df[res_col])))
+    resist = join(resist, NA_dists, on = :Distance, kind = :left)
+    resist = resist[resist[:NoNA], :]
+
+    res_dist = unique(Array{Float64}(resist[:Distance]))
+    res_depth = unique(Array{Float64}(resist[:Depth]))
+    lres = reshape(Array(log(resist[res_col])),
+                   length(res_depth), length(res_dist))
+
+    min_depth = minimum(res_depth)
+
+    lres_int = interpolate((res_depth, res_dist),
+                           lres,
+                           Gridded(Linear()))
+
+    """
+        interp_lres(dist, depth, elev = true)
+
+    This function returns the interpolated log resistivity at the given
+    locations as a DataArray. Locations above the minimum depth are returned
+    as `NA`s.
+    """
+    function interp_lres(dist, depth, elev::Bool = true)
+        @assert length(dist) == length(depth)
+        lres = DataArray{Float64, 1}(zeros(dist))
+
+        if elev
+            depth = interp_elev(dist) .- depth
+        end
+
+        for (r, (tr, dp)) in enumerate(zip(dist, depth))
+            if dp .> min_depth
+                lres[r] = lres_int[dp, tr]
+            else
+                lres[r] = NA
+            end
+        end
+        lres
+    end
+    return interp_lres
+end
+
