@@ -128,6 +128,8 @@ function create_interp_lres(dsn::ODBC.DSN,
                         ORDER BY "Resistivity"."Distance", "Resistivity"."Depth"
                         """)
     resist = nulldf2dadf(resist)
+
+    res_col = Symbol(res_col)
     resist[isnan(resist[res_col]), res_col] = NA
 
     NA_dists = by(resist, :Distance,
