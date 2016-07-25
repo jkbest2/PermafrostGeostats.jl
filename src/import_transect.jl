@@ -152,7 +152,7 @@ function import_transect(dsn::ODBC.DSN,
                  WHERE
                    "Cores".point = "Boreholes".point
                    AND "Boreholes".transect = '$transect_name'
-                   AND "Boreholes".distance = $use_boreholes
+                   AND "Boreholes".distance IN $use_boreholes
                  ORDER BY "Boreholes".distance, "Cores".depth;
                  """
     cores = ODBC.query(dsn, core_query)
@@ -238,7 +238,7 @@ function transform_gmc(cores::DataFrame, k = 0.01,
 end
 
 """
-    type SoilMapping# Associative
+    type SoilMapping# <: Associative
 
 Contains fields that define the association between soil observations as strings
 and the integers that are used to model them. Note that these are not always
