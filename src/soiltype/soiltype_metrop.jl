@@ -128,10 +128,13 @@ function soiltype_metrop(knot_locs::Array{Float64, 2},
     run_results = results[run_name]
 
     try
+        g_create(run_results, "meta")
+        run_results["meta/n_warmup_samp"] = fld(warmup, thin)
+        run_results["meta/n_samp"] = fld(iters, thin)
         # Initial set up
-        # prop_dist = MvNormal(zeros(prop_width), PDiagMat(prop_width))
         knot_samp = d_create(run_results, "knots",
-                             datatype(Float64), dataspace(nknots, nproc, fld(iters, thin)),
+                             datatype(Float64),
+                             dataspace(nknots, nproc, fld(iters, thin)),
                              "chunk", (nknots, nproc, 1))
         curr_knots = init
         prop_knots = copy(init)
@@ -141,7 +144,8 @@ function soiltype_metrop(knot_locs::Array{Float64, 2},
         soiltype_predict!(curr_pred, curr_proc)
         prop_pred = Array{Int}(ndat)
         lp = d_create(run_results, "lp",
-                      datatype(Float64), dataspace(fld(iters, thin), 1))
+                      datatype(Float64),
+                      dataspace(fld(iters, thin), 1))
         curr_lp = soiltype_lp(curr_knots, curr_pred, data_soil, misclass)
         prop_lp = -Inf
         knot_adj = Array{Float64, 1}(nparam)
