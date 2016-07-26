@@ -54,7 +54,7 @@ function permafrost_update!(param::Symbol,
     if param == :knots
         θ[:knots][idx] += adj
         proc[:spat][:] = kwt * θ[:knots]
-    else if param == :β
+    elseif param == :β
         θ[:β][idx] += adj
         proc[:reg][:] = data[:lres] * θ[:β]
     end
@@ -124,14 +124,14 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
                                 Dict{Symbol, AbstractArray}(
                                     :knots => randn(nknots),
                                     :β => randn(2)),
-                                         fill(0.5, length(nknots)),
                            RNG::AbstractRNG = MersenneTwister(rand(UInt64)))
 
     # Checks
     @assert 0 < misclass < 1 "Misclass rate must be ∈ (0, 1)"
     @assert warmup ≤ iters "Too many warmup iterations"
-    @assert all([length(init[k]) == length(prop_width[k])
-                for k in keys(init)]) "Need initial values for all parameters"
+    @assert reduce(&,
+                   [length(init[k]) == length(prop_width[k])
+                    for k in keys(init)]) "Need initial values for all parameters"
 
     # Data setup
     data_locs = Array{Float64, 2}(data[[:Distance, :Elevation]])
@@ -148,7 +148,7 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
                     :spat => Array{Float64, 1}(ndata),
                     :reg => Array{Float64, 1}(ndata))
     curr_pred = BitArray{1}(ndata)
-    permafrost_update!(curr_θ, curr_proc, curr_pred, data_kwt)
+    permafrost_update!(curr_θ, curr_proc, curr_pred, data_kwt, obs)
     curr_lp = permafrost_lp(curr_θ, curr_pred, obs, misclass)
 
     prop_θ = deepcopy(init)
@@ -156,14 +156,14 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
                     :spat => Array{Float64, 1}(ndata),
                     :reg => Array{Float64, 1}(ndata))
     prop_pred = BitArray{1}(ndata)
-    permafrost_update!(prop_θ, prop_proc, prop_pred, data_kwt)
+    permafrost_update!(prop_θ, prop_proc, prop_pred, data_kwt, obs)
     prop_lp = permafrost_lp(prop_θ, prop_pred, obs, misclass)
 
-    θ_adj = Array{Float64, 1}(nknots)
+    θ_adj = Dict{Symbol, Vector{Float64}}()
     θ_idx = reduce(vcat,
-                   [collect(zip(fill(k, length(θ_curr[k])),
-                    1:length(θ_curr[k])))
-                    for k in keys(θ_curr)])
+                   [collect(zip(fill(k, length(curr_θ[k])),
+                    1:length(curr_θ[k])))
+                    for k in keys(curr_θ)])
     θ_seq = deepcopy(θ_idx)
 
     # HDF5 setup
@@ -194,11 +194,11 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
         g_create(run_results, "prop_width")
         pw_log = run_results["prop_width"]
         if finish_adapt > 0
-            adapt_log = Dict{Symbol, AbstractArray}(nknots,
-                                                    adapt_every)
-            for k in prop_width
-                adapt_log[k] = Vector{Float64}(length(prop_width[k]))
-            end
+            adapt_log = Dict{Symbol, AbstractArray}(
+                            :knots => zeros(length(prop_width[:knots]),
+                                            adapt_every),
+                            :β => zeros(length(prop_width[:β]),
+                                        adapt_every))
             knot_pw_log = d_create(pw_log, "knots",
                                    datatype(Float64),
                                    dataspace(nknots,
@@ -207,9 +207,9 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
             knot_pw_log[:, 1] = prop_width[:knots]
             β_pw_log = d_create(pw_log, "β",
                                 datatype(Float64),
-                                dataspace(size(θ_curr[:β], 1),
+                                dataspace(size(curr_θ[:β], 1),
                                           finish_adapt ÷ adapt_every + 1),
-                                "chunk", (size(θ_curr[:β], 1), 1))
+                                "chunk", (size(curr_θ[:β], 1), 1))
             β_pw_log[:, 1] = prop_width[:β]
         else
             pw_log["knots"] = prop_width[:knots]
@@ -217,7 +217,7 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
         end
 
         @showprogress "Sampling..." for i in 1:iters
-            for k in keys(θ_adj)
+            for k in keys(prop_width)
                 θ_adj[k] = prop_width[k] .* randn(RNG,
                                                   size(prop_width[k]))
             end
@@ -226,11 +226,13 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
             for (p, i) in θ_seq
                 permafrost_update!(p,
                                    i,
-                                   θ_adj[k][i],
-                                   prop_knots,
+                                   θ_adj[p][i],
+                                   prop_θ,
+                                   prop_proc,
                                    prop_pred,
-                                   data_kwt)
-                prop_lp = permafrost_lp(prop_knots,
+                                   data_kwt,
+                                   obs)
+                prop_lp = permafrost_lp(prop_θ,
                                         prop_pred,
                                         obs,
                                         misclass)
@@ -254,12 +256,12 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
             # Adapt proposal distribution during warmup
             if i ≤ finish_adapt
                 if i % adapt_every != 0
-                    for k in keys(θ_curr)
+                    for k in keys(curr_θ)
                         adapt_log[k][:, i % adapt_every] = vec(curr_θ[k])
                     end
                 else
-                    for k in keys(θ_curr)
-                        adapt_log[k][:, adapt_every] = vec(curr_knots[k])
+                    for k in keys(curr_θ)
+                        adapt_log[k][:, adapt_every] = vec(curr_θ[k])
                         adapt_prop_width!(prop_width[k], adapt_log[k])
                     end
                     pw_idx = i ÷ finish_adapt + 1
@@ -272,7 +274,8 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
             if i % thin == 0
                 idx = i ÷ thin
                 lp[idx, 1] = curr_lp
-                knot_samp[:, idx] = curr_knots
+                knot_samp[:, idx] = curr_θ[:knots]
+                β_samp[:, idx] = curr_θ[:β]
             end
         end
     finally
