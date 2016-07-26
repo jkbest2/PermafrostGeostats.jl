@@ -14,7 +14,14 @@ function watercontent_interp(sample_file::AbstractString,
                              soil_type::Array{Int, 1},
                              log_res::AbstractArray,
                              summary::Function = mean)
-    β_res = h5read(sample_file, string(run_name, "/β_res"))
+    post_warmup = h5read(sample_file,
+                         string(run_name, "/meta/n_warmup_samp")) + 1
+    nsamp_tot = h5read(sample_file,
+                       string(run_name, "/meta/n_samp"))
+
+    β_res = h5read(sample_file,
+                   string(run_name, "/β_res"),
+                   post_warmup:nsamp_tot)
     β = permutedims(β_res, [1, 3, 2])
 
     lres = hcat(ones(log_res), log_res)

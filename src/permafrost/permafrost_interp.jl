@@ -15,8 +15,17 @@ function permafrost_interp(sample_file::AbstractString,
                            lres::Array{Float64, 2};
                            knot_name = "knots",
                            β_name = "β")
-    pf_knots = h5read(sample_file, string(run_name, "/", knot_name))
-    pf_β = h5read(sample_file, string(run_name, "/", β_name))
+    post_warmup = h5read(sample_file,
+                         string(run_name, "/meta/n_warmup_samp")) + 1
+    nsamp_tot = h5read(sample_file,
+                       string(run_name, "/meta/n_samp"))
+
+    pf_knots = h5read(sample_file,
+                      string(run_name, "/", knot_name),
+                      post_warmup:nsamp_tot)
+    pf_β = h5read(sample_file,
+                  string(run_name, "/", β_name),
+                  post_warmup:nsamp_tot)
 
     nlocs = size(new_locs, 1)
     nsamp = size(pf_knots, 2)

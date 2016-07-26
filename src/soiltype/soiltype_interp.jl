@@ -13,8 +13,14 @@ function soiltype_interp(sample_file::AbstractString,
                          run_name::AbstractString,
                          kwt::AbstractArray,
                          new_locs::Array{Float64, 2})
-    soil_knots = h5read(sample_file, string(run_name, "/knots"))
-    # kwt = knot_wt(knot_locs, kern, new_locs)
+    post_warmup = h5read(sample_file,
+                         string(run_name, "/meta/n_warmup_samp")) + 1
+    nsamp_tot = h5read(sample_file,
+                       string(run_name, "/meta/n_samp"))
+
+    soil_knots = h5read(sample_file,
+                        string(run_name, "/knots"),
+                        post_warmup:nsamp_tot)
 
     nlocs = size(new_locs, 1)
     nproc = size(soil_knots, 2)
