@@ -184,6 +184,10 @@ function watercontent_metrop(knot_locs::Array{Float64, 2},
     run_results = results[run_name]
 
     try
+        g_create(run_results, "meta")
+        run_results["meta/n_warmup_samp"] = fld(warmup, thin)
+        run_results["meta/n_samp"] = fld(iters, thin)
+
         nsave = fld(iters, thin)
         β_res_samp = d_create(run_results, "β_res",
                               datatype(Float64),

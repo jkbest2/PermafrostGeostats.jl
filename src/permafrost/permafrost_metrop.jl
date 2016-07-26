@@ -177,6 +177,9 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
     run_results = results[run_name]
 
     try
+        g_create(run_results, "meta")
+        run_results["meta/n_warmup_samp"] = fld(warmup, thin)
+        run_results["meta/n_samp"] = fld(iters, thin)
         # Initial set up
         knot_samp = d_create(run_results, "knots",
                              datatype(Float64),
@@ -189,7 +192,6 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
         lp = d_create(run_results, "lp",
                       datatype(Float64),
                       dataspace(fld(iters, thin), 1))
-
 
         g_create(run_results, "prop_width")
         pw_log = run_results["prop_width"]
