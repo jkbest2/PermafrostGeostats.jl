@@ -1,8 +1,11 @@
 """
     permafrost_interp(sample_file::AbstractString,
                       run_name::AbstractString,
-                      kern::AbstractConvolutionKernel,
-                      new_locs::Array{Float64, 2})
+                      kwt::AbstractArray,
+                      new_locs::Array{Float64, 2},
+                      log_res::Vector{Float64};
+                      [knot_name = "knots",
+                      β_name = "β"])
 
 Reads the samples from `sample_file` and uses them to calculate the proportion
 of samples where each new location *is* permafrost. Returns an Array{Float64}
@@ -12,9 +15,11 @@ function permafrost_interp(sample_file::AbstractString,
                            run_name::AbstractString,
                            kwt::AbstractArray,
                            new_locs::Array{Float64, 2},
-                           lres::Array{Float64, 2};
+                           log_res::Vector{Float64};
                            knot_name = "knots",
                            β_name = "β")
+    lres = hcat(ones(log_res), log_res)
+
     post_warmup = h5read(sample_file,
                          string(run_name, "/meta/n_warmup_samp")) + 1
     nsamp_tot = h5read(sample_file,
@@ -22,10 +27,10 @@ function permafrost_interp(sample_file::AbstractString,
 
     pf_knots = h5read(sample_file,
                       string(run_name, "/", knot_name),
-                      post_warmup:nsamp_tot)
+                      (:, post_warmup:nsamp_tot))
     pf_β = h5read(sample_file,
                   string(run_name, "/", β_name),
-                  post_warmup:nsamp_tot)
+                  (:, post_warmup:nsamp_tot))
 
     nlocs = size(new_locs, 1)
     nsamp = size(pf_knots, 2)

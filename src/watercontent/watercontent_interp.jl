@@ -21,7 +21,7 @@ function watercontent_interp(sample_file::AbstractString,
 
     β_res = h5read(sample_file,
                    string(run_name, "/β_res"),
-                   post_warmup:nsamp_tot)
+                   (:, :, post_warmup:nsamp_tot))
     β = permutedims(β_res, [1, 3, 2])
 
     lres = hcat(ones(log_res), log_res)
