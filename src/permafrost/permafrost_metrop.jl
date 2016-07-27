@@ -16,7 +16,7 @@ function  permafrost_lp(θ::Dict{Symbol, AbstractArray},
                         misclass::Float64;
                         prior = Dict{Symbol, Distribution}(
                                           :knots => Normal(0, 1),
-                                          :β => MvNormal([-2., 0.5],
+                                          :β => MvNormal([-3., 0.45],
                                                          diagm([0.5, 0.25]))))
     # Prior
     lp = loglikelihood(prior[:knots], θ[:knots])
@@ -59,6 +59,7 @@ function permafrost_update!(param::Symbol,
         proc[:reg][:] = data[:lres] * θ[:β]
     end
     pred[:] = (proc[:spat] .+ proc[:reg]) .> 0
+    nothing
 end
 
 """
@@ -77,6 +78,7 @@ function permafrost_update!(θ::Dict{Symbol, AbstractArray},
     proc[:spat][:] = kwt * θ[:knots]
     proc[:reg][:] = data[:lres] * θ[:β]
     pred[:] = (proc[:spat] .+ proc[:reg]) .> 0
+    nothing
 end
 
 """
@@ -225,10 +227,10 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
             end
             θ_seq = shuffle(RNG, θ_idx)
 
-            for (p, i) in θ_seq
-                permafrost_update!(p,
-                                   i,
-                                   θ_adj[p][i],
+            for (par, idx) in θ_seq
+                permafrost_update!(par,
+                                   idx,
+                                   θ_adj[par][idx],
                                    prop_θ,
                                    prop_proc,
                                    prop_pred,
@@ -241,13 +243,13 @@ function permafrost_metrop(knot_locs::Array{Float64, 2},
 
                 if (prop_lp ≥ curr_lp) || (prop_lp - curr_lp) > log(rand(RNG))
                     curr_lp = prop_lp
-                    curr_θ[p][i] = prop_θ[p][i]
+                    curr_θ[par][idx] = prop_θ[par][idx]
                     for k in keys(prop_proc)
                         curr_proc[k][:] = prop_proc[k]
                     end
                     curr_pred[:] = prop_pred
                 else
-                    prop_θ[p][i] = curr_θ[p][i]
+                    prop_θ[par][idx] = curr_θ[par][idx]
                     for k in keys(curr_proc)
                         prop_proc[k][:] = curr_proc[k]
                     end
