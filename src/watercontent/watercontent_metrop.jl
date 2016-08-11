@@ -271,7 +271,7 @@ function watercontent_metrop(knot_locs::Array{Float64, 2},
                    #      prop_dist[k] = MvNormal(zeros(prop_width[k]),
                    #                              PDiagMat(prop_width[k]))
                     end
-                    pw_idx = i ÷ finish_adapt + 1
+                    pw_idx = i ÷ adapt_every + 1
                     β_res_pw[:, pw_idx] = prop_width[:β_res]
                     σ_pw[:, pw_idx] = prop_width[:σ]
                 end
