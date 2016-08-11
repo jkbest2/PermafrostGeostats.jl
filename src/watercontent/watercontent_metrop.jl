@@ -21,36 +21,37 @@ function watercontent_lp(θ::Dict{Symbol, Array},
     lp = sum([loglikelihood(prior[k], θ[k]) for k in keys(θ)])
 
     # logistic water content likelihood
-    lp += loglikelihood(Normal(0., θ[:σ][1]), pred[:lwc] .- data[:lwc])
+    resid = data[:lwc] .- pred[:lwc]
+    lp += logpdf(MvNormal(zeros(resid), θ[:σ][data[:soil]]), resid)
 
     lp
 end
 
 """
-    watercontent_update!(change_param::Symbol,
-                         change_ind::Int,
-                         change_adj::Float64,
+    watercontent_update!(par::Symbol,
+                         idx::Int,
+                         adj::Float64,
                          θ::Dict{Symbol, Array},
                          pred::Dict{Symbol, Array},
                          data::Dict{Symbol, Array})
 
 Update watercontent parameters and predictions in place.
 """
-function watercontent_update!(change_param::Symbol,
-                              change_ind::Int,
-                              change_adj::Float64,
+function watercontent_update!(par::Symbol,
+                              idx::Int,
+                              adj::Float64,
                               θ::Dict{Symbol, Array},
                               pred::Dict{Symbol, Array},
                               data::Dict{Symbol, Array})
-    if change_param == :σ
-        if (θ[:σ] + change_adj)[1] > 0
-            θ[:σ] += change_adj
+    if par == :σ
+        if all(θ[:σ][idx] + adj > 0)
+            θ[:σ][idx] += adj
         end
         return nothing
     end
 
-    if change_param == :β_res
-        θ[:β_res][change_ind] += change_adj
+    if par == :β_res
+        θ[:β_res][idx] += adj
         for i in 1:length(pred[:lwc])
             pred[:lwc][i] = (data[:lres][i, :] *
                                  θ[:β_res][:, data[:soil][i]])[1]
@@ -95,7 +96,7 @@ end
                         init::Dict{Symbol, Array} =
                            Dict{Symbol, Array{Float64}}(
                                :β_res => randn(2, 6),
-                               :σ => randexp(1)),
+                               :σ => randexp(6)),
                         RNG::AbstractRNG = MersenneTwister(rand(UInt64)))
 
 Function for performing Markov Chain Monte Carlo using the Metropolis algorithm
@@ -119,11 +120,11 @@ function watercontent_metrop(knot_locs::Array{Float64, 2},
                              init::Dict{Symbol, Array} =
                                 Dict{Symbol, Array}(
                                     :β_res => randn(2, 6),
-                                    :σ => randexp(1)),
+                                    :σ => randexp(6)),
                              RNG::AbstractRNG = MersenneTwister(rand(UInt64)))
 
     # Checks
-    @assert init[:σ][1] > 0 "Initial σ must be positive"
+    @assert all(init[:σ] .> 0) "Initial σ must be positive"
     @assert warmup ≤ iters "Number of iterations must be larger than warmup"
     @assert all((k) -> length(init[k]) == length(prop_width[k]), keys(init)) "Initial values and proposal widths must have same dimensions."
 
@@ -195,7 +196,7 @@ function watercontent_metrop(knot_locs::Array{Float64, 2},
                               "chunk", (2, nsoilprocs, 1))
         σ_samp = d_create(run_results, "σ",
                           datatype(Float64),
-                          dataspace(1, nsave))
+                          dataspace(nsoilprocs, nsave))
         lp_samp = d_create(run_results, "lp",
                            datatype(Float64),
                            dataspace(1, nsave))
@@ -214,7 +215,7 @@ function watercontent_metrop(knot_locs::Array{Float64, 2},
             β_res_pw[:, 1] = prop_width[:β_res]
             σ_pw = d_create(pw_log, "σ",
                             datatype(Float64),
-                            dataspace(1,
+                            dataspace(nsoilprocs,
                                       finish_adapt ÷ adapt_every + 1))
             σ_pw[:, 1] = prop_width[:σ]
         end
@@ -280,7 +281,7 @@ function watercontent_metrop(knot_locs::Array{Float64, 2},
             if i % thin == 0
                 idx = i ÷ thin
                 β_res_samp[:, :, idx] = θ_curr[:β_res]
-                σ_samp[1, idx] = θ_curr[:σ]
+                σ_samp[:, idx] = θ_curr[:σ]
                 lp_samp[1, idx] = lp_curr
             end
         end
