@@ -1,7 +1,6 @@
 """
     setup_sample_logs{T <: AbstractArray}(
-                      results_file::AbstractString,
-                      run_name::AbstractString,
+                      run_results::AbstractString,
                       θ::Dict{Symbol, T},
                       iters::Integer,
                       thin::Integer,
@@ -15,7 +14,6 @@ the proposal width log.
 """
 function setup_sample_logs{T <: AbstractArray}(
                            run_results::HDF5.HDF5Group,
-                           run_name::AbstractString,
                            θ::Dict{Symbol, T},
                            iters::Integer,
                            thin::Integer,
@@ -26,7 +24,7 @@ function setup_sample_logs{T <: AbstractArray}(
 
     nsave = fld(iters, thin)
 
-    samples = Dict{Symbol, HDF5.HDF5Dataset}
+    samples = Dict{Symbol, HDF5.HDF5Dataset}()
     for (k, v) in θ
         dat_size = size(v)
         samples[k] = d_create(run_results, string(k),
@@ -42,9 +40,31 @@ function setup_sample_logs{T <: AbstractArray}(
 end
 
 """
+    write_sample{T <: AbstractArray}(
+                 θ::Dict{Symbol, T},
+                 sample_log::Dict{Symbol, HDF5.HDF5Dataset},
+                 iter::Integer,
+                 thin::Integer)
+
+Write a set of parameters out to the HDF5 file.
+"""
+function write_sample{T <: AbstractArray}(
+                      θ::Dict{Symbol, T},
+                      lp::Float64,
+                      sample_log::Dict{Symbol, HDF5.HDF5Dataset},
+                      iter::Integer,
+                      thin::Integer)
+    idx = iter ÷ thin
+    for (k, v) in θ
+        samp_idx = (fill(:, ndims(v))..., idx)
+        sample_log[k][samp_idx...] = v
+    end
+    sample_log[:lp][1, idx] = lp
+end
+
+"""
     setup_pw_log{T <: AbstractArray}(
                  results::HDF5.HDF5Group,
-                 run_name::AbstractString,
                  prop_width::Dict{Symbol, T},
                  finish_adapt::Integer,
                  adapt_every::Integer)
@@ -54,12 +74,11 @@ Returns a dictionary of parameter symbols and associated HDF5 dataset.
 """
 function setup_pw_log{T <: AbstractArray}(
                       results::HDF5.HDF5Group,
-                      run_name::AbstractString,
                       prop_width::Dict{Symbol, T},
                       finish_adapt::Integer,
                       adapt_every::Integer)
     g_create(results, "prop_width")
-    pw_record = run_results["prop_width"]
+    pw_record = results["prop_width"]
 
     n_adapt = fld(finish_adapt, adapt_every)
     pw_log = Dict{Symbol, HDF5.HDF5Dataset}()
@@ -98,3 +117,22 @@ function setup_adapt_log{T <: AbstractArray}(
     end
 end
 
+"""
+    write_pw{T <: AbstractArray}(
+             prop_width::Dict{Symbol, T},
+             pw_log::Dict{Symbol, HDF5.HDF5Dataset},
+             iter::Integer,
+             adapt_every::Integer)
+
+Write adapted proposal widths to HDF5 file.
+"""
+function write_pw{T <: AbstractArray}(
+                  prop_width::Dict{Symbol, T},
+                  pw_log::Dict{Symbol, HDF5.HDF5Dataset},
+                  iter::Integer,
+                  adapt_every::Integer)
+    idx = iter ÷ adapt_every + 1
+    for (k, v) in prop_width
+        pw_log[:, idx] = v
+    end
+end
