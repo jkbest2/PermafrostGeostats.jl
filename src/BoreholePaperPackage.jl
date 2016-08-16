@@ -58,6 +58,7 @@ module BoreholePaperPackage
     include("import_transect.jl")
     include("mcmc_adapt.jl")
     include("interpolators.jl")
+    include("setup_logs.jl")
     include("permafrost/permafrost_metrop.jl")
     include("permafrost/permafrost_interp.jl")
     include("soiltype/soiltype_metrop.jl")
