@@ -1,6 +1,6 @@
 __precompile__()
 
-module BoreholePaperPackage
+module PermafrostGeostats
 
     using DataFrames, Distributions
     using GaussianProcessConvolutions
