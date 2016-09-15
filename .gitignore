@@ -1,0 +1,17 @@
+*.sw*
+*#*
+*~
+*.docx
+*.odt
+*.xlsx
+*.hdf5
+*.jld
+*.ini
+.dropbox
+*.aux
+*.log
+*.pdf
+*.synctex.gz
+*.out
+*.nav
+*.toc
