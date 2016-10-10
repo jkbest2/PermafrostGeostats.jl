@@ -59,24 +59,24 @@ function soiltype_update!(idx::Int,
 end
 
 """
-function soiltype_metrop(knot_locs::Array{Float64, 2},
-                         kern::AbstractConvolutionKernel,
-                         data,
-                         nproc::Integer = length(unique(soil_data));
-                         results_file::AbstractString = "NULL",
-                         run_name::AbstractString = "run",
-                         nknots::Integer = size(knot_locs, 1),
-                         misclass::Float64 = 0.001,
-                         iters::Integer = 2000,
-                         thin::Integer = 1,
-                         warmup::Integer = 1000,
-                         finish_adapt::Integer = 800,
-                         adapt_every::Integer = 100,
-                         prop_width::Array{Float64, 1} =
-                                     0.5 * ones(nknots * nproc),
-                         init::Array{Float64, 2} =
-                                     randn(nknots, nproc),
-                         RNG::AbstractRNG = MersenneTwister(rand(UInt64)))
+soiltype_metrop(knot_locs::Array{Float64, 2},
+                kern::AbstractConvolutionKernel,
+                data,
+                nproc::Integer = length(unique(soil_data));
+                results_file::AbstractString = "NULL",
+                run_name::AbstractString = "run",
+                nknots::Integer = size(knot_locs, 1),
+                misclass::Float64 = 0.001,
+                iters::Integer = 2000,
+                thin::Integer = 1,
+                warmup::Integer = 1000,
+                finish_adapt::Integer = 800,
+                adapt_every::Integer = 100,
+                prop_width::Array{Float64, 1} =
+                            0.5 * ones(nknots * nproc),
+                init::Array{Float64, 2} =
+                            randn(nknots, nproc),
+                RNG::AbstractRNG = MersenneTwister(rand(UInt64)))
 
 Function for performing Markov Chain Monte Carlo using the Metropolis
 algorithm to fit the soil type model. Samples are saved in HDF5 format in
