@@ -53,7 +53,7 @@ function watercontent_update!(par::Symbol,
     if par == :β_res
         θ[:β_res][idx] += adj
         for i in 1:length(pred[:lwc])
-            pred[:lwc][i] = (data[:lres][i, :] *
+            pred[:lwc][i] = (data[:lres][i:i, :] *
                                  θ[:β_res][:, data[:soil][i]])[1]
         end
     end
@@ -72,7 +72,7 @@ function watercontent_update!(θ::Dict{Symbol, Array},
                               pred::Dict{Symbol, Array},
                               data::Dict{Symbol, Array})
     for i in 1:length(pred[:lwc])
-        pred[:lwc][i] = (data[:lres][i, :] *
+        pred[:lwc][i] = (data[:lres][i:i, :] *
                                  θ[:β_res][:, data[:soil][i]])[1]
     end
     nothing
