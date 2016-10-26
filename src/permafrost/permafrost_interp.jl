@@ -40,8 +40,8 @@ function permafrost_interp(sample_file::AbstractString,
 
     pred = Vector{Float64}(nlocs)
     @showprogress for loc in 1:nlocs
-        spat_proc = kwt[loc, :] * pf_knots
-        reg_proc = lres[loc, :] * pf_β
+        spat_proc = kwt[loc:loc, :] * pf_knots
+        reg_proc = lres[loc:loc, :] * pf_β
         pred[loc] = mean(spat_proc .+ reg_proc .> 0)
     end
     pred
