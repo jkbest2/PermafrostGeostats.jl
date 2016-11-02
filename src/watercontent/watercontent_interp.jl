@@ -13,7 +13,7 @@ function watercontent_interp(sample_file::AbstractString,
                              run_name::AbstractString,
                              soil_type::Array{Int, 1},
                              log_res::AbstractArray,
-                             summary::Function = mean)
+                             summary_func::Function = mean)
     post_warmup = h5read(sample_file,
                          string(run_name, "/meta/n_warmup_samp")) + 1
     nsamp_tot = h5read(sample_file,
@@ -29,7 +29,7 @@ function watercontent_interp(sample_file::AbstractString,
 
     pred = Array{Float64, 1}(nlocs)
     @showprogress for l in 1:nlocs
-        pred[l] = summary(lres[l, :] * β[:, :, soil_type[l]])[1]
+        pred[l] = summary_func(lres[l:l, :] * β[:, :, soil_type[l]])[1]
     end
     pred
 end
