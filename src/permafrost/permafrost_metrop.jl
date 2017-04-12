@@ -5,7 +5,7 @@
                   misclass::Float64;
                   prior = Dict{Symbol, Distribution}(
                                     :knots => Normal(0, 1),
-                                    :β => MvNormal([-2., 0.5],
+                                    :β => MvNormal([-3., 0.45],
                                                    diagm([0.5, 0.25]))
 
 Log posterior of the permafrost model, allowing for misclassification.
