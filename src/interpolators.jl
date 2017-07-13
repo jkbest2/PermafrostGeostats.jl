@@ -130,7 +130,7 @@ function create_interp_lres(dsn::ODBC.DSN,
     resist = nulldf2dadf(resist)
 
     res_col = Symbol(res_col)
-    resist[isnan(resist[res_col]), res_col] = NA
+    resist[isnan.(resist[res_col]), res_col] = NA
 
     NA_dists = by(resist, :Distance,
                   df -> DataFrame(NoNA = !anyna(df[res_col])))
