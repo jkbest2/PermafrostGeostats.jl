@@ -58,7 +58,7 @@ function create_interp_lres(res_csv::AbstractString,
     resist = readtable(res_csv,
                        header = true)
     resist = resist[resist[:Transect] .== tsect_name, :]
-    resist[isnan(resist[res_col]), res_col] = NA
+    resist[isnan.(resist[res_col]), res_col] = NA
 
     NA_dists = by(resist, :Distance,
                   df -> DataFrame(NoNA = !anyna(df[res_col])))
