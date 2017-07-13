@@ -61,7 +61,7 @@ function create_interp_lres(res_csv::AbstractString,
     resist[isnan.(resist[res_col]), res_col] = NA
 
     NA_dists = by(resist, :Distance,
-                  df -> DataFrame(NoNA = !anyna(df[res_col])))
+                  df -> DataFrame(NoNA = !any(isna, df[res_col])))
     resist = join(resist, NA_dists, on = :Distance, kind = :left)
     resist = resist[resist[:NoNA], :]
 
