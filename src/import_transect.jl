@@ -73,7 +73,7 @@ Convert NullableArray of WeakRefString elements to DataArray of UTF8String
 elements.
 """
 function nullable2dataarray{T <: WeakRefString}(nullarray::NullableArray{T, 1})
-    DataArray(Vector{UTF8String}(nullarray.values), nullarray.isnull)
+    DataArray(Vector{String}(nullarray.values), nullarray.isnull)
 end
 
 """
